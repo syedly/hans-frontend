@@ -1,35 +1,44 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Package, ShoppingCart, AlertTriangle } from "lucide-react";
-import { dashboardStats } from "@/lib/dummy-data";
 
-export function StatsCards() {
+interface StatsCardsProps {
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+}
+
+export function StatsCards({
+  totalRevenue,
+  totalOrders,
+  pendingOrders,
+}: StatsCardsProps) {
   const stats = [
     {
       title: "Total Revenue",
-      value: `$${dashboardStats.totalRevenue.toLocaleString("en-CA", {
+      value: `$${totalRevenue.toLocaleString("en-CA", {
         minimumFractionDigits: 2,
       })}`,
       icon: DollarSign,
-      description: "+12.5% from last month",
+      description: "From all orders",
       color: "text-[#E6A8A8]",
     },
     {
       title: "Total Orders",
-      value: dashboardStats.totalOrders.toString(),
+      value: totalOrders.toString(),
       icon: ShoppingCart,
-      description: "+8 new orders today",
+      description: "All time orders",
       color: "text-blue-600",
     },
     {
       title: "Pending Orders",
-      value: dashboardStats.pendingOrders.toString(),
+      value: pendingOrders.toString(),
       icon: Package,
       description: "Requires attention",
       color: "text-amber-600",
     },
     {
       title: "Low Stock Items",
-      value: dashboardStats.lowStockItems.toString(),
+      value: "0",
       icon: AlertTriangle,
       description: "Restock needed",
       color: "text-red-600",
@@ -55,3 +64,4 @@ export function StatsCards() {
     </div>
   );
 }
+
