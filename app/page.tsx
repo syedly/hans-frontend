@@ -57,7 +57,7 @@ type Purchase = {
 
 async function getPurchases(): Promise<Purchase[]> {
   try {
-    const res = await fetch("https://orghans.pythonanywhere.com/api/purchases", {
+    const res = await fetch("https://orghans.pythonanywhere.com/api/purchases/", {
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -70,7 +70,7 @@ async function getPurchases(): Promise<Purchase[]> {
 
 async function getProducts(): Promise<Product[]> {
   try {
-    const res = await fetch("https://orghans.pythonanywhere.com/api/products", {
+    const res = await fetch("https://orghans.pythonanywhere.com/api/products/", {
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -85,10 +85,11 @@ export default async function Home() {
   const purchases = await getPurchases();
   const products = await getProducts();
 
-  const totalRevenue = purchases.reduce(
-    (sum, p) => sum + (p.product?.discounted_price || p.product?.price || 0),
-    0
-  );
+  const totalRevenue = purchases.reduce((sum, p: any) => {
+    const raw = p.product_discounted_price ?? p.product_price ?? p.price ?? p.product?.discounted_price ?? p.product?.price ?? 0;
+    const price = typeof raw === "string" ? parseFloat(raw) : Number(raw || 0);
+    return sum + (isFinite(price) ? price : 0);
+  }, 0);
   const totalOrders = purchases.length;
   const pendingOrders = purchases.filter((p) => p.status === "pending").length;
 
