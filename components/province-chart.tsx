@@ -89,8 +89,8 @@ export function ProvinceChart({ purchases }: ProvinceChartProps) {
 
       // fallback to purchases aggregation
       const provinceData: { [key: string]: number } = {};
-      purchases.forEach((purchase) => {
-        const province = purchase.province || "Unknown";
+      purchases.forEach((purchase: any) => {
+        const province = purchase.province ?? purchase.province_name ?? "Unknown";
         provinceData[province] = (provinceData[province] || 0) + 1;
       });
       const fallback = Object.entries(provinceData).map(([province, orders]) => ({ province, orders }));

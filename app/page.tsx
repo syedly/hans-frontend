@@ -57,7 +57,7 @@ type Purchase = {
 
 async function getPurchases(): Promise<Purchase[]> {
   try {
-    const res = await fetch("http://localhost:3000/api/purchases", {
+    const res = await fetch("https://orghans.pythonanywhere.com/api/purchases", {
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -70,7 +70,7 @@ async function getPurchases(): Promise<Purchase[]> {
 
 async function getProducts(): Promise<Product[]> {
   try {
-    const res = await fetch("http://localhost:3000/api/products", {
+    const res = await fetch("https://orghans.pythonanywhere.com/api/products", {
       cache: "no-store",
     });
     if (!res.ok) return [];

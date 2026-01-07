@@ -85,10 +85,11 @@ export function RevenueChart({ purchases }: RevenueChartProps) {
 
       // fallback to purchases aggregation
       const monthlyData: { [key: string]: number } = {};
-      purchases.forEach((purchase) => {
+      purchases.forEach((purchase: any) => {
         const monthKey = `${purchase.purchase_month} ${purchase.purchase_year}`;
-        const amount = purchase.product?.discounted_price || purchase.product?.price || 0;
-        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + amount;
+        const raw = purchase.product_discounted_price ?? purchase.product_price ?? purchase.price ?? purchase.product?.discounted_price ?? purchase.product?.price ?? 0;
+        const amount = typeof raw === "string" ? parseFloat(raw) : Number(raw || 0);
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (isFinite(amount) ? amount : 0);
       });
       const fallback = Object.entries(monthlyData)
         .map(([month, revenue]) => ({ month, revenue: Math.round(revenue * 100) / 100 }))

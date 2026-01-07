@@ -16,18 +16,19 @@ import {
 
 export default async function AnalyticsPage() {
   const [purchases, products, stats] = await Promise.all([
-    fetch("http://localhost:3000/api/purchases", { cache: "no-store" }).then((r) => (r.ok ? r.json() : [] as any[])).catch(() => []),
-    fetch("http://localhost:3000/api/products", { cache: "no-store" }).then((r) => (r.ok ? r.json() : [] as any[])).catch(() => []),
-    fetch("http://localhost:3000/api/purchase/stats", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch("https://orghans.pythonanywhere.com/api/purchases/", { cache: "no-store" }).then((r) => (r.ok ? r.json() : [] as any[])).catch(() => []),
+    fetch("https://orghans.pythonanywhere.com/api/products/", { cache: "no-store" }).then((r) => (r.ok ? r.json() : [] as any[])).catch(() => []),
+    fetch("https://orghans.pythonanywhere.com/api/purchase/stats/", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
 
   const totalRevenue = (purchases || []).reduce((sum: number, p: any) => {
-    const price = Number(p.product?.discounted_price ?? p.product?.price ?? 0);
-    return sum + price;
+    const raw = p.product_discounted_price ?? p.product_price ?? p.price ?? p.product?.discounted_price ?? p.product?.price ?? 0;
+    const price = typeof raw === "string" ? parseFloat(raw) : Number(raw || 0);
+    return sum + (isFinite(price) ? price : 0);
   }, 0);
 
   const totalOrders = (purchases || []).length;
-  const uniqueCustomers = new Set((purchases || []).map((p: any) => p.user?.id ?? p.user?.username)).size || 1;
+  const uniqueCustomers = new Set((purchases || []).map((p: any) => p.user_id ?? p.user?.id ?? p.user_username ?? p.user?.username)).size || 1;
   const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
   const returnCount = (purchases || []).filter((p: any) => (p.status || "").toLowerCase() === "returned").length;
   const returnRate = totalOrders ? (returnCount / totalOrders) * 100 : 0;
@@ -50,12 +51,13 @@ export default async function AnalyticsPage() {
   // top products
   const productMap: Record<string, { name: string; sales: number; revenue: number }> = {};
   (purchases || []).forEach((p: any) => {
-    const prod = p.product || {};
-    const id = prod.id ?? prod.name ?? "unknown";
-    const price = Number(prod.discounted_price ?? prod.price ?? 0);
-    if (!productMap[id]) productMap[id] = { name: prod.name || "Unknown", sales: 0, revenue: 0 };
+    const id = p.product_id ?? p.product?.id ?? p.product_name ?? p.product?.name ?? `prod-${p.product_id ?? p.product?.id ?? Math.random()}`;
+    const name = p.product_name ?? p.product?.name ?? "Unknown";
+    const raw = p.product_discounted_price ?? p.product_price ?? p.price ?? p.product?.discounted_price ?? p.product?.price ?? 0;
+    const price = typeof raw === "string" ? parseFloat(raw) : Number(raw || 0);
+    if (!productMap[id]) productMap[id] = { name, sales: 0, revenue: 0 };
     productMap[id].sales += 1;
-    productMap[id].revenue += price;
+    productMap[id].revenue += isFinite(price) ? price : 0;
   });
 
   const topProducts = Object.values(productMap).sort((a, b) => b.sales - a.sales).slice(0, 4);

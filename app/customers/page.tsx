@@ -36,49 +36,49 @@ type Customer = {
 ===================== */
 
 export default async function CustomersPage() {
-  // Fetch purchases
-  const purchasesRes = await fetch("http://localhost:3000/api/purchases", {
+  // Fetch purchases (API returns flattened purchase objects)
+  const purchasesRes = await fetch("https://orghans.pythonanywhere.com/api/purchases/", {
     cache: "no-store",
   });
 
   let purchases: any[] = [];
   try {
     if (purchasesRes.ok) {
-      purchases = await purchasesRes.json();
+      const data = await purchasesRes.json();
+      purchases = Array.isArray(data) ? data : [data];
     }
   } catch (e) {
     console.error("Failed to parse purchases for customers page", e);
   }
 
-  // Build customers list from purchases
-  const list = (Array.isArray(purchases) ? purchases : [purchases]).reduce(
-    (acc: Record<string, Customer>, p: any) => {
-      const user = p.user || {};
-      const uid = user.id ?? user.username ?? p.id;
+  // Build customers list from flattened purchases returned by the real API
+  const list = purchases.reduce((acc: Record<string, Customer>, p: any) => {
+    const uid = p.user_id ?? p.user_username ?? p.id ?? p.external_id;
 
-      if (!acc[uid]) {
-        acc[uid] = {
-          id: String(uid),
-          name:
-            user.username ||
-            `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() ||
-            "Customer",
-          email: user.email || "",
-          phone: p.contact || "",
-          province: p.province || "-",
-          orders: 0,
-          totalSpent: 0,
-        };
-      }
+    if (!acc[uid]) {
+      const name =
+        p.user_username || `${p.user_first_name ?? ""} ${p.user_last_name ?? ""}`.trim() ||
+        "Customer";
 
-      acc[uid].orders += 1;
-      acc[uid].totalSpent +=
-        (p.product?.discounted_price ?? p.product?.price) || 0;
+      acc[uid] = {
+        id: String(uid),
+        name,
+        email: p.user_email || "",
+        phone: p.contact || p.phone || "",
+        province: p.province || "-",
+        orders: 0,
+        totalSpent: 0,
+      };
+    }
 
-      return acc;
-    },
-    {}
-  );
+    acc[uid].orders += 1;
+
+    const rawPrice = p.product_discounted_price ?? p.product_price ?? p.price ?? p.product?.discounted_price ?? p.product?.price ?? 0;
+    const price = typeof rawPrice === "string" ? parseFloat(rawPrice) : Number(rawPrice || 0);
+    acc[uid].totalSpent += isFinite(price) ? price : 0;
+
+    return acc;
+  }, {} as Record<string, Customer>);
 
   const customersList: Customer[] = Object.values(list);
 

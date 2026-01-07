@@ -93,40 +93,39 @@ export function RecentOrders({ purchases }: RecentOrdersProps) {
                 </TableRow>
               ) : (
                 purchases.map((purchase) => {
+                  const p: any = purchase;
                   const displayStatus =
-                    (statusColors[purchase.status as keyof typeof statusColors]
-                      ? purchase.status
+                    (statusColors[(p.status || "pending") as keyof typeof statusColors]
+                      ? (p.status || "pending")
                       : "pending") as keyof typeof statusColors;
-                  const total =
-                    purchase.product?.discounted_price ||
-                    purchase.product?.price ||
-                    0;
+                  const raw = p.product_discounted_price ?? p.product_price ?? p.price ?? p.product?.discounted_price ?? p.product?.price ?? 0;
+                  const total = typeof raw === "string" ? parseFloat(raw) : Number(raw || 0);
 
                   return (
-                    <TableRow key={purchase.id}>
+                    <TableRow key={p.id}>
                       <TableCell className="font-medium">
-                        #{purchase.id}
+                        #{p.id}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {purchase.user?.username || "N/A"}
+                            {p.user_username ?? p.user?.username ?? "N/A"}
                           </span>
                           <span className="text-xs text-muted-foreground hidden lg:inline">
-                            {purchase.user?.email || "N/A"}
+                            {p.user_email ?? p.user?.email ?? "N/A"}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {purchase.province || "-"}
+                        {p.province ?? "-"}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {purchase.purchase_month} {purchase.purchase_date},{" "}
-                        {purchase.purchase_year}
+                        {p.purchase_month} {p.purchase_date},{" "}
+                        {p.purchase_year}
                       </TableCell>
                       <TableCell>
                         <Badge className={statusColors[displayStatus]}>
-                          {purchase.status}
+                          {p.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
