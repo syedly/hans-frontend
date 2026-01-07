@@ -69,7 +69,7 @@ export function RevenueChart({ purchases }: RevenueChartProps) {
 
     async function loadStats() {
       try {
-        const res = await fetch("/api/purchase/stats");
+        const res = await fetch("https://orghans.pythonanywhere.com/api/purchase/stats/");
         if (!res.ok) throw new Error("no-stats");
         const json = await res.json();
 
