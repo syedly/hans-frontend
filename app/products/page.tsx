@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, Trash } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ import {
 
 type Product = {
   id: number;
+  external_id?: number | null;
   name: string;
   sku: string;
   category?: string | null;
@@ -70,6 +71,8 @@ export default function ProductsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const [formData, setFormData] = useState<AddProductForm>({
     name: "",
     description: "",
@@ -79,6 +82,26 @@ export default function ProductsPage() {
     is_available: true,
     status: "in stock",
   });
+
+  function openEditModal(product: Product) {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name || "",
+      description: (product as any).description || "",
+      price: String(product.price ?? ""),
+      discounted_price: product.discounted_price ? String(product.discounted_price) : "",
+      image: (product as any).image || "",
+      is_available: (product as any).is_available ?? true,
+      status: (product.status || "in stock").toLowerCase().replace(/-/g, " "),
+    });
+    setOpenModal(true);
+  }
+
+  function closeModal() {
+    setOpenModal(false);
+    setEditingProduct(null);
+    setSuccessMessage("");
+  }
 
   useEffect(() => {
     async function fetchProducts() {
@@ -148,37 +171,63 @@ export default function ProductsPage() {
         status: formData.status,
       };
 
-      const response = await fetch(
-        "https://hansbeauty.pythonanywhere.com/api/add-product/",
-        {
-          method: "POST",
+      // If editingProduct is set, perform PATCH to the external product endpoint
+      if (editingProduct) {
+        const externalId = (editingProduct.external_id ?? editingProduct.id) as number;
+        const url = `https://orghans.pythonanywhere.com/api/products/${externalId}/`;
+        const response = await fetch(url, {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        setSuccessMessage("Product added successfully!");
-        setFormData({
-          name: "",
-          description: "",
-          price: "",
-          discounted_price: "",
-          image: "",
-          is_available: true,
-          status: "in stock",
         });
-        setTimeout(() => {
-          setOpenModal(false);
-          setSuccessMessage("");
-        }, 2000);
+
+        if (response.ok) {
+          const updated = await response.json();
+          setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? { ...p, ...updated } : p)));
+          setSuccessMessage("Product updated successfully!");
+          setTimeout(() => {
+            closeModal();
+          }, 1200);
+        } else {
+          const errorData = await response.json();
+          alert("Error updating product: " + (errorData.detail || errorData.message || "Please try again"));
+        }
       } else {
-        const errorData = await response.json();
-        alert("Error adding product: " + (errorData.message || "Please try again"));
+        // Add new product (existing behavior)
+        const response = await fetch(
+          "https://hansbeauty.pythonanywhere.com/api/add-product/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        if (response.ok) {
+          const newProduct = await response.json();
+          setProducts((prev) => [newProduct, ...prev]);
+          setSuccessMessage("Product added successfully!");
+          setFormData({
+            name: "",
+            description: "",
+            price: "",
+            discounted_price: "",
+            image: "",
+            is_available: true,
+            status: "in stock",
+          });
+          setTimeout(() => {
+            setOpenModal(false);
+            setSuccessMessage("");
+          }, 1200);
+        } else {
+          const errorData = await response.json();
+          alert("Error adding product: " + (errorData.message || "Please try again"));
+        }
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred while adding the product");
+      alert("An error occurred while saving the product");
     } finally {
       setSubmitting(false);
     }
@@ -202,7 +251,19 @@ export default function ProductsPage() {
             </div>
 
             <Button
-              onClick={() => setOpenModal(true)}
+              onClick={() => {
+                setEditingProduct(null);
+                setFormData({
+                  name: "",
+                  description: "",
+                  price: "",
+                  discounted_price: "",
+                  image: "",
+                  is_available: true,
+                  status: "in stock",
+                });
+                setOpenModal(true);
+              }}
               className="bg-[#E6A8A8] hover:bg-[#D88E8E]"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -259,9 +320,43 @@ export default function ProductsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openEditModal(product)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={async () => {
+                                  const confirmDelete = window.confirm(
+                                    "Are you sure you want to delete this product?"
+                                  );
+                                  if (!confirmDelete) return;
+
+                                  try {
+                                    const externalId = (product.external_id ?? product.id) as number;
+                                    const res = await fetch(
+                                      `https://orghans.pythonanywhere.com/api/products/${externalId}/`,
+                                      {
+                                        method: "DELETE",
+                                      }
+                                    );
+                                    if (res.ok) {
+                                      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+                                    } else {
+                                      const err = await res.text();
+                                      alert("Delete failed: " + err);
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    alert("An error occurred while deleting");
+                                  }
+                                }}
+                              >
+                                <Trash className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -277,8 +372,8 @@ export default function ProductsPage() {
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
-            <DialogDescription>Fill in the product details below</DialogDescription>
+            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+            <DialogDescription>{editingProduct ? "Update the product details below" : "Fill in the product details below"}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -383,11 +478,41 @@ export default function ProductsPage() {
             )}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>
+              <Button type="button" variant="outline" onClick={() => closeModal()}>
                 Cancel
               </Button>
+
+              {editingProduct && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={async () => {
+                    const confirmDelete = window.confirm("Delete this product permanently?");
+                    if (!confirmDelete) return;
+                    try {
+                      const externalId = (editingProduct.external_id ?? editingProduct.id) as number;
+                      const res = await fetch(`https://orghans.pythonanywhere.com/api/products/${externalId}/`, {
+                        method: "DELETE",
+                      });
+                      if (res.ok) {
+                        setProducts((prev) => prev.filter((p) => p.id !== editingProduct.id));
+                        closeModal();
+                      } else {
+                        const err = await res.text();
+                        alert("Delete failed: " + err);
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      alert("An error occurred while deleting");
+                    }
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+
               <Button type="submit" disabled={submitting} className="bg-[#E6A8A8] hover:bg-[#D88E8E]">
-                {submitting ? "Adding..." : "Add Product"}
+                {submitting ? (editingProduct ? "Saving..." : "Adding...") : editingProduct ? "Save Changes" : "Add Product"}
               </Button>
             </DialogFooter>
           </form>

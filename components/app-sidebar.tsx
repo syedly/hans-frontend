@@ -25,6 +25,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const menuItems = [
   {
@@ -61,6 +64,19 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogout() {
+    try {
+      // Remove token cookie and user info from localStorage
+      document.cookie = `token=; path=/; max-age=0; samesite=lax`;
+      localStorage.removeItem("user");
+      // Redirect to login page, preserving current path for a return
+      router.push(`/login?from=${encodeURIComponent(pathname ?? "/")}`);
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  }
 
   return (
     <Sidebar>
@@ -121,6 +137,13 @@ export function AppSidebar() {
             <span className="text-xs text-muted-foreground">
               admin@hansbeauty.co
             </span>
+          </div>
+
+          <div className="ml-auto">
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </Button>
           </div>
         </div>
       </SidebarFooter>
